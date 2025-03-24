@@ -1,5 +1,3 @@
-import json
-import os
 import numpy as np
 
 import matplotlib as mpl
@@ -10,8 +8,6 @@ import matplotlib.colors as mcolors
 from matplotlib.widgets import Slider
 
 import cv2
-
-import xarray as xr
 
 
 class Visualiser:
@@ -248,48 +244,3 @@ class Visualiser:
 
     def show(self):
         plt.show()
-
-# Load nc files
-def load_nc(path):
-    try:
-        return xr.open_mfdataset(
-            path,
-            concat_dim="tomo_zdim",
-            data_vars= "minimal",
-            combine="nested",
-            combine_attrs="drop_conflicts",
-            coords="minimal",
-            compat="override",
-        )
-    except:
-        return xr.open_mfdataset(
-            path,
-            concat_dim="labels_zdim",
-            data_vars= "minimal",
-            combine="nested",
-            combine_attrs="drop_conflicts",
-            coords="minimal",
-            compat="override",
-        )
-
-def load_nc_arr(path):
-    try:
-        return xr.open_mfdataset(
-            path,
-            concat_dim="tomo_zdim",
-            data_vars= "minimal",
-            combine="nested",
-            combine_attrs="drop_conflicts",
-            coords="minimal",
-            compat="override",
-        )['tomo'].data
-    except:
-        return xr.open_mfdataset(
-            path,
-            concat_dim="labels_zdim",
-            data_vars= "minimal",
-            combine="nested",
-            combine_attrs="drop_conflicts",
-            coords="minimal",
-            compat="override",
-        )['labels'].data
