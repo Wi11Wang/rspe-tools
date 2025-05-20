@@ -46,7 +46,7 @@ def get_bboxes_helper(mask, max_label, block_info=None):
     offset = [loc[0] for loc in block_info[0]['array-location']]
     return _get_bboxes_helper(mask, _max_label=max_label, _offset=offset)
 
-def get_bboxes(arr):
+def get_bboxes(arr, max_label=10_000):
     """
     Aggregate bounding boxes from a Dask array across all blocks.
 
@@ -54,10 +54,29 @@ def get_bboxes(arr):
     :return: Aggregated array of bounding boxes, each as [x_min, y_min, z_min, x_max, y_max, z_max].
     :rtype: ndarray
     """
-    MAX_LABEL = 10_000
-    blocked_res = da.map_blocks(get_bboxes_helper, arr, max_label=MAX_LABEL, chunks=(1, MAX_LABEL, 6), dtype=np.int16).compute()
-    res_reshaped = view_as_blocks(blocked_res, block_shape=(1, MAX_LABEL, 6)).reshape(-1, MAX_LABEL, 6)
-    res_arr = np.empty((MAX_LABEL, 6), dtype=np.int16)
+    blocked_res = da.map_blocks(get_bboxes_helper, arr, max_label=max_label, chunks=(1, max_label, 6), dtype=np.int16).compute()
+    res_reshaped = view_as_blocks(blocked_res, block_shape=(1, max_label, 6)).reshape(-1, max_label, 6)
+    res_arr = np.empty((max_label, 6), dtype=np.int16)
     res_arr[:, :3] = np.min(res_reshaped[:, :, :3], axis=0)
     res_arr[:, 3:] = np.max(res_reshaped[:, :, 3:], axis=0)
     return res_arr
+
+def crop_3d(arr, loc, padding=0):
+    """
+    Crop a 3D array to the specified bounding box with optional padding.
+
+    :param ndarray arr: 3D array to crop.
+    :param tuple loc: Bounding box coordinates as (z_min, x_min, y_min, z_max, x_max, y_max).
+    :param int padding: Number of voxels to pad around the bounding box.
+    :return: Cropped 3D array.
+    :rtype: ndarray
+    """
+    if padding == 0:
+        return arr[loc[0]:loc[3] + 1, loc[1]:loc[4] + 1, loc[2]:loc[5] + 1]
+    z_min = max(loc[0] - padding, 0)
+    x_min = max(loc[1] - padding, 0)
+    y_min = max(loc[2] - padding, 0)
+    z_max = min(loc[3] + padding, arr.shape[0] - 1)
+    x_max = min(loc[4] + padding, arr.shape[1] - 1)
+    y_max = min(loc[5] + padding, arr.shape[2] - 1)
+    return arr[z_min:z_max + 1, x_min:x_max + 1, y_min:y_max + 1]

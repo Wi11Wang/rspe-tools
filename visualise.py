@@ -43,7 +43,8 @@ class Visualiser:
             mpl.rcParams.update(mpl.rcParamsDefault)
         self.tomo_cmap = 'gray'
         self.mask_cmap = Visualiser.create_mask_cmap(n_colors, cmap=cmap, seed=seed)
-        self.mask_cmap_norm = mcolors.BoundaryNorm(np.arange(0, n_colors), self.mask_cmap.N)
+        self.mask_cmap_norm = mcolors.Normalize(vmin=0, vmax=n_colors)
+        self.sliders = []
 
     def plot_tomo(self, tomo, alpha=1, show_ticks=False, ax=None):
         """
@@ -108,8 +109,8 @@ class Visualiser:
             slider.on_changed(_update)
         else:
             fig, ax = plt.subplots(1, 2, figsize=figsize)
-            self.plot_tomo(tomo, ax[0], show_ticks=show_ticks)
-            self.plot_mask(mask, ax[1], show_ticks=show_ticks)
+            self.plot_tomo(tomo, ax=ax[0], show_ticks=show_ticks)
+            self.plot_mask(mask, ax=ax[1], show_ticks=show_ticks)
         self.show()
 
     def compare_masks(self, *masks, figsize=(10, 5), show_ticks=False, stacked=True):
@@ -134,7 +135,6 @@ class Visualiser:
             fig.subplots_adjust(bottom=total_slider_height + 0.05)
             # Plot the base mask.
             self.plot_mask(masks[0], ax=ax, show_ticks=show_ticks)
-            sliders = []  # Store slider references here
             for i, mask in enumerate(masks[1:]):
                 im = self.plot_mask(mask, ax=ax, show_ticks=show_ticks)
                 slider_ax = fig.add_axes([0.2, 0.05 + (n_sliders - i - 1)*(slider_height + gap), 0.6, slider_height])
@@ -143,31 +143,23 @@ class Visualiser:
                     im.set_alpha(val)
                     fig.canvas.draw_idle()
                 slider.on_changed(update)
-                sliders.append(slider)  # Keep reference to avoid garbage collection
+                self.sliders.append(slider)
             self.show()
-            return (fig, ax, sliders)
         else:
             n_axes = len(masks)
             fig, axes = plt.subplots(1, n_axes, figsize=figsize)
             for ax, mask in zip(axes, masks):
                 self.plot_mask(mask, ax=ax, show_ticks=show_ticks)
             self.show()
-            return (fig, axes)
 
     def compare_tomo_mask_pred(self, tomo, mask, pred):
         fig, ax = plt.subplots(1, 3, figsize=(15, 5))
-        self.plot_tomo(tomo, ax[0])
-        self.plot_mask(mask, ax[1])
-        self.plot_mask(pred, ax[2])
-        ax[0].set_xticks([])
-        ax[0].set_yticks([])
-        ax[1].set_xticks([])
-        ax[1].set_yticks([])
-        ax[2].set_xticks([])
-        ax[2].set_yticks([])
+        self.plot_tomo(tomo, ax=ax[0])
+        self.plot_mask(mask, ax=ax[1])
+        self.plot_mask(pred, ax=ax[2])
         plt.show()
 
-    def view_tomo_stack(self, tomo_stack, figsize=(10, 10), downscale=False):
+    def plot_tomo_stack(self, tomo_stack, figsize=(10, 10), downscale=False):
         """
         Visualise a tomogram stack with a slider.
 
@@ -202,9 +194,10 @@ class Visualiser:
             fig.canvas.draw_idle()
             del slice_img
         slider.on_changed(update)
+        self.sliders.append(slider)
         self.show()
     
-    def view_mask_stack(self, mask_stack, figsize=(10, 10), downscale=False):
+    def plot_mask_stack(self, mask_stack, figsize=(10, 10), downscale=False):
         """
         Visualise a mask stack with a slider.
 
@@ -240,7 +233,11 @@ class Visualiser:
             ax.set_title(f"Slice {idx}")
             fig.canvas.draw_idle()
         slider.on_changed(update)
+        self.sliders.append(slider)
         self.show()
+    
+    def figsize(self, figsize=(10, 10)):
+        plt.figure(figsize=figsize)
 
     def show(self):
         plt.show()
